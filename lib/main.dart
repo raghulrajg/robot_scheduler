@@ -62,6 +62,11 @@ class MqttConfig {
   static const String username = "raghulrajg";
   static const String password = "Gr2_nemam";
   static const String promptTopic = "hmi/user_prompt";
+  // reasoning_agent.py answers every prompt here (and the conveyor's QC agent
+  // forwards conveyor warnings here); with REQUIRE_CONFIRMATION=1 in the
+  // scheduler's .env a parsed job only runs after a confirm on hmi/confirm.
+  static const String feedbackTopic = "hmi/feedback";
+  static const String confirmTopic = "hmi/confirm";
 }
 
 class RobotFleetApp extends StatelessWidget {

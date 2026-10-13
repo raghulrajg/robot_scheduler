@@ -1,30 +1,42 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:robot_scheduler/main.dart';
+import 'package:robot_scheduler/feedback.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  const instruction = '{"product": "ABCD", "source": "manufacturing_1", "quality_check": "quality_station", '
+      '"success_dest": "package_area", "fail_dest": "waste_area", "request_id": "app1"}';
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  test('confirmation request from the reasoning agent', () {
+    final fb = FleetFeedback.parse('{"request_id": "app1", "ok": true, "needs_confirmation": true, '
+        '"instruction": $instruction, "how_to_confirm": {}}')!;
+    expect(fb.kind, FeedbackKind.needsConfirmation);
+    expect(fb.requestId, 'app1');
+    expect(fb.instruction!['product'], 'ABCD');
+    expect(fb.text, contains('ABCD: manufacturing_1 -> quality_station -> package_area (fail: waste_area)'));
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  test('forwarded, rejected and discarded prompts', () {
+    expect(FleetFeedback.parse('{"request_id": "app1", "ok": true, "forwarded": true, "instruction": $instruction}')!.kind,
+        FeedbackKind.forwarded);
+    final err = FleetFeedback.parse('{"request_id": "app2", "ok": false, "error": "not understood: no product"}')!;
+    expect(err.kind, FeedbackKind.error);
+    expect(err.text, 'Not sent: not understood: no product');
+    expect(FleetFeedback.parse('{"request_id": "app3", "ok": true, "discarded": true}')!.kind, FeedbackKind.discarded);
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  test('conveyor warning forwarded by the QC agent', () {
+    final fb = FleetFeedback.parse('{"request_id": null, "ok": false, "source": "conveyor", "station": "qc_01", '
+        '"warning": "SWITCH_NO_ACK", "product": "ABCD", "detail": "no ok within 10 s"}')!;
+    expect(fb.kind, FeedbackKind.conveyorWarning);
+    expect(fb.requestId, isNull);
+    expect(fb.text, contains('(ABCD)'));
+    expect(fb.text, contains('did not confirm'));
+  });
+
+  test('payloads sent by the app', () {
+    expect(promptPayload('take ABCD', 'app1'), '{"prompt":"take ABCD","request_id":"app1"}');
+    expect(confirmPayload('app1', true), '{"request_id":"app1","confirm":true}');
+    expect(FleetFeedback.parse('plain text'), isNull);
+    expect(FleetFeedback.parse('[1, 2]'), isNull);
   });
 }
