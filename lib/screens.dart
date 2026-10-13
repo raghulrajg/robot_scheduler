@@ -430,7 +430,7 @@ class _SchedulerScreenState extends State<SchedulerScreen> {
                   ? const Center(child: Text('Answers from the fleet and conveyor warnings appear here.'))
                   : ListView.separated(
                       itemCount: _feedback.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (context, i) {
                         final fb = _feedback[i];
                         final t = fb.time;
